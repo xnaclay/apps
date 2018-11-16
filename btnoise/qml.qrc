@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/main.qml</file>
+        <file>qml/Connect.qml</file>
+        <file>qml/AppPage.qml</file>
+        <file>qml/BottomLine.qml</file>
+        <file>qml/AppSettings.qml</file>
+        <file>qml/AppButton.qml</file>
+        <file>qml/App.qml</file>
+        <file>qml/SplashScreen.qml</file>
+        <file>qml/TitleBar.qml</file>
+	<file>qml/qmldir</file>
+    </qresource>
+</RCC>
