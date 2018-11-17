@@ -17,7 +17,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 HEADERS += \
         deviceinfo.h \
         devicefinder.h \
-        devicehandler.h \
         bluetoothbaseclass.h \
         app-global.h
 
@@ -25,7 +24,6 @@ SOURCES += \
         main.cpp \
         deviceinfo.cpp \
         devicefinder.cpp \
-        devicehandler.cpp \
         bluetoothbaseclass.cpp
 
 RESOURCES += qml.qrc

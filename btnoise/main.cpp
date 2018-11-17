@@ -1,10 +1,10 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QSettings>
 #include <QtCore/QLoggingCategory>
 
 #include "devicefinder.h"
-#include "devicehandler.h"
 
 int main(int argc, char *argv[])
 {
@@ -12,15 +12,13 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
 
-    DeviceHandler deviceHandler;
-    DeviceFinder deviceFinder(&deviceHandler);
+    QSettings settings;
 
-    qmlRegisterUncreatableType<DeviceHandler>("Shared", 1, 0, "AddressType", "Enum is not a type");
+    DeviceFinder deviceFinder(&settings);
 
     QQmlApplicationEngine engine;
 //    engine.rootContext()->setContextProperty("connectionHandler", &connectionHandler);
     engine.rootContext()->setContextProperty("deviceFinder", &deviceFinder);
-    engine.rootContext()->setContextProperty("deviceHandler", &deviceHandler);
 
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));
     if (engine.rootObjects().isEmpty())

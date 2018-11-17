@@ -57,11 +57,14 @@
 #include <QTimer>
 #include <QBluetoothLocalDevice>
 #include <QBluetoothDeviceDiscoveryAgent>
+#include <QBluetoothServiceDiscoveryAgent>
 #include <QBluetoothDeviceInfo>
+#include <QBluetoothServiceInfo>
+#include <QBluetoothSocket>
 #include <QVariant>
+#include <QSettings>
 
 class DeviceInfo;
-class DeviceHandler;
 
 class DeviceFinder: public BluetoothBaseClass
 {
@@ -71,7 +74,7 @@ class DeviceFinder: public BluetoothBaseClass
     Q_PROPERTY(QVariant devices READ devices NOTIFY devicesChanged)
 
 public:
-    DeviceFinder(DeviceHandler *handler, QObject *parent = nullptr);
+    DeviceFinder(QSettings *settings, QObject *parent = nullptr);
     ~DeviceFinder();
 
     bool scanning() const;
@@ -83,6 +86,7 @@ public slots:
 
 private slots:
     void addDevice(const QBluetoothDeviceInfo&);
+    void serviceDiscovered(const QBluetoothServiceInfo&);
     void scanError(QBluetoothDeviceDiscoveryAgent::Error error);
     void scanFinished();
 
@@ -91,9 +95,13 @@ signals:
     void devicesChanged();
 
 private:
-    DeviceHandler *m_deviceHandler;
-    QBluetoothDeviceDiscoveryAgent *m_deviceDiscoveryAgent;
+    QSettings *m_settings;
     QBluetoothLocalDevice m_localDevice;
+
+    QBluetoothSocket socket;
+
+    QBluetoothDeviceDiscoveryAgent m_deviceDiscoveryAgent;
+    QBluetoothServiceDiscoveryAgent m_serviceDiscoveryAgent;
     QList<QObject*> m_devices;
 
 };

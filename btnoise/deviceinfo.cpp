@@ -54,38 +54,31 @@
 #include <QBluetoothUuid>
 
 DeviceInfo::DeviceInfo(const QBluetoothDeviceInfo &info):
-    QObject(), m_device(info)
+    QObject(),
+    m_address(info.address().toString()),
+    m_name(info.name())
 {
 }
 
-QBluetoothDeviceInfo DeviceInfo::getDevice() const
+DeviceInfo::DeviceInfo(const QBluetoothServiceInfo &service):
+    QObject(),
+    m_address(service.device().address().toString()),
+    m_name(service.device().name()),
+    m_svcInfo(service)
 {
-    return m_device;
 }
 
 QString DeviceInfo::getName() const
 {
-#ifdef SIMULATOR
-    return "Demo device";
-#else
-    return m_device.name();
-#endif
+    return m_name;
 }
 
 QString DeviceInfo::getAddress() const
 {
-#ifdef SIMULATOR
-    return "00:11:22:33:44:55";
-#elif defined Q_OS_DARWIN
-    // workaround for Core Bluetooth:
-    return m_device.deviceUuid().toString();
-#else
-    return m_device.address().toString();
-#endif
+    return m_address;
 }
 
-void DeviceInfo::setDevice(const QBluetoothDeviceInfo &device)
+QBluetoothServiceInfo DeviceInfo::getServiceInfo() const
 {
-    m_device = device;
-    emit deviceChanged();
+    return m_svcInfo;
 }

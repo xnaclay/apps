@@ -48,23 +48,29 @@
 **
 ****************************************************************************/
 
+#include <QBluetoothSocket>
+
 #include "devicefinder.h"
-#include "devicehandler.h"
 #include "deviceinfo.h"
 
-DeviceFinder::DeviceFinder(DeviceHandler *handler, QObject *parent):
-    BluetoothBaseClass(parent),
-    m_deviceHandler(handler),
-    m_localDevice(parent)
-{
-    m_deviceDiscoveryAgent = new QBluetoothDeviceDiscoveryAgent(this);
+static const QLatin1String BT_SERVER_UUID("3bb45162-cecf-4bcb-be9f-026ec7ab38be");
 
-    connect(m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, &DeviceFinder::addDevice);
-    connect(m_deviceDiscoveryAgent, static_cast<void (QBluetoothDeviceDiscoveryAgent::*)(QBluetoothDeviceDiscoveryAgent::Error)>(&QBluetoothDeviceDiscoveryAgent::error),
+DeviceFinder::DeviceFinder(QSettings *settings, QObject *parent):
+    BluetoothBaseClass(parent),
+    m_settings(settings),
+    m_localDevice(parent),
+    m_deviceDiscoveryAgent(this),
+    m_serviceDiscoveryAgent(this),
+    socket(QBluetoothServiceInfo::RfcommProtocol)
+{
+    connect(&m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, &DeviceFinder::addDevice);
+    connect(&m_deviceDiscoveryAgent, static_cast<void (QBluetoothDeviceDiscoveryAgent::*)(QBluetoothDeviceDiscoveryAgent::Error)>(&QBluetoothDeviceDiscoveryAgent::error),
             this, &DeviceFinder::scanError);
 
-    connect(m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished, this, &DeviceFinder::scanFinished);
-    connect(m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::canceled, this, &DeviceFinder::scanFinished);
+    connect(&m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished, this, &DeviceFinder::scanFinished);
+    connect(&m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::canceled, this, &DeviceFinder::scanFinished);
+
+    connect(&m_serviceDiscoveryAgent, &QBluetoothServiceDiscoveryAgent::serviceDiscovered, this, &DeviceFinder::serviceDiscovered);
 
 }
 
@@ -72,24 +78,20 @@ DeviceFinder::~DeviceFinder()
 {
     qDeleteAll(m_devices);
     m_devices.clear();
-
-    qInfo() << "CONNECTED DEVICES";
-
-    for (const auto &dvc : m_localDevice.connectedDevices()) {
-        qInfo() << "CONNECTED DEVICE" << dvc.toString();
-    }
 }
 
 void DeviceFinder::startSearch()
 {
     clearMessages();
-    m_deviceHandler->setDevice(nullptr);
     qDeleteAll(m_devices);
     m_devices.clear();
 
     emit devicesChanged();
 
-    m_deviceDiscoveryAgent->start();
+//    m_deviceDiscoveryAgent.start();
+    qInfo() << "starting service scan";
+    m_serviceDiscoveryAgent.setUuidFilter(QBluetoothUuid(BT_SERVER_UUID));
+    m_serviceDiscoveryAgent.start(QBluetoothServiceDiscoveryAgent::FullDiscovery);
 
     emit scanningChanged();
     setInfo(tr("Scanning for devices..."));
@@ -100,6 +102,15 @@ void DeviceFinder::addDevice(const QBluetoothDeviceInfo &device)
     qInfo() << "found device" << device.address().toString();
     m_devices.append(new DeviceInfo(device));
     setInfo(tr("Device found. Scanning more..."));
+    emit devicesChanged();
+}
+
+void DeviceFinder::serviceDiscovered(const QBluetoothServiceInfo &service)
+{
+    qInfo() << "service discovered"
+            << service.device().name()
+            << service.device().address().toString();
+    m_devices.append(new DeviceInfo(service));
     emit devicesChanged();
 }
 
@@ -128,7 +139,7 @@ void DeviceFinder::scanFinished()
 
 void DeviceFinder::connectToService(const QString &address)
 {
-    m_deviceDiscoveryAgent->stop();
+    m_deviceDiscoveryAgent.stop();
 
     DeviceInfo *currentDevice = nullptr;
     for (int i = 0; i < m_devices.size(); i++) {
@@ -138,15 +149,41 @@ void DeviceFinder::connectToService(const QString &address)
         }
     }
 
-    if (currentDevice)
-        m_deviceHandler->setDevice(currentDevice);
+    if (currentDevice) {
+        //TODO IMPLEMENT
+        qInfo() << "connect device"
+                << currentDevice->getAddress();
+        //PROOF OF CONCEPT
+        socket.connectToService(currentDevice->getServiceInfo());
+
+        connect(&socket, &QBluetoothSocket::readyRead, [this]() {
+            qInfo() << "ready to read from server";
+
+            while (socket.canReadLine()) {
+                QByteArray lineData = socket.readLine();
+                QString line = QString::fromUtf8(lineData.constData(), lineData.length());
+                qInfo() << "read line"
+                        << line;
+            }
+        });
+        connect(&socket, &QBluetoothSocket::connected, [this]() {
+            qInfo() << "connected to service";
+
+            qInfo() << "sending SCAN command";
+
+            socket.write("SCAN\n");
+        });
+        connect(&socket, &QBluetoothSocket::disconnected, []() {
+            qInfo() << "disconnected from service";
+        });
+    }
 
     clearMessages();
 }
 
 bool DeviceFinder::scanning() const
 {
-    return m_deviceDiscoveryAgent->isActive();
+    return m_deviceDiscoveryAgent.isActive();
 }
 
 QVariant DeviceFinder::devices()

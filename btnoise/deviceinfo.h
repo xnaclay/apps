@@ -54,6 +54,7 @@
 #include <QString>
 #include <QObject>
 #include <QBluetoothDeviceInfo>
+#include <QBluetoothServiceInfo>
 
 class DeviceInfo: public QObject
 {
@@ -63,17 +64,19 @@ class DeviceInfo: public QObject
 
 public:
     DeviceInfo(const QBluetoothDeviceInfo &device);
+    DeviceInfo(const QBluetoothServiceInfo &service);
 
-    void setDevice(const QBluetoothDeviceInfo &device);
     QString getName() const;
     QString getAddress() const;
-    QBluetoothDeviceInfo getDevice() const;
+    QBluetoothServiceInfo getServiceInfo() const;
 
 signals:
     void deviceChanged();
 
 private:
-    QBluetoothDeviceInfo m_device;
+    QString m_address;
+    QString m_name;
+    QBluetoothServiceInfo m_svcInfo;
 };
 
 #endif // DEVICEINFO_H
