@@ -61,6 +61,7 @@
 #include <QBluetoothDeviceInfo>
 #include <QBluetoothServiceInfo>
 #include <QBluetoothSocket>
+#include <QBluetoothAddress>
 #include <QVariant>
 #include <QSettings>
 
@@ -72,6 +73,7 @@ class DeviceFinder: public BluetoothBaseClass
 
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
     Q_PROPERTY(QVariant devices READ devices NOTIFY devicesChanged)
+    Q_PROPERTY(QVariant speakerDevices READ speakerDevices NOTIFY speakerDevicesChanged)
 
 public:
     DeviceFinder(QSettings *settings, QObject *parent = nullptr);
@@ -79,6 +81,7 @@ public:
 
     bool scanning() const;
     QVariant devices();
+    QVariant speakerDevices();
 
 public slots:
     void startSearch();
@@ -93,6 +96,7 @@ private slots:
 signals:
     void scanningChanged();
     void devicesChanged();
+    void speakerDevicesChanged();
 
 private:
     QSettings *m_settings;
@@ -103,6 +107,7 @@ private:
     QBluetoothDeviceDiscoveryAgent m_deviceDiscoveryAgent;
     QBluetoothServiceDiscoveryAgent m_serviceDiscoveryAgent;
     QList<QObject*> m_devices;
+    QList<QObject*> m_speakerDevices;
 
 };
 

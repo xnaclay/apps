@@ -68,6 +68,13 @@ DeviceInfo::DeviceInfo(const QBluetoothServiceInfo &service):
 {
 }
 
+DeviceInfo::DeviceInfo(const QString &address, const QString &name):
+    QObject(),
+    m_address(address),
+    m_name(name)
+{
+}
+
 QString DeviceInfo::getName() const
 {
     return m_name;

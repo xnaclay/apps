@@ -75,7 +75,7 @@ AppPage {
             verticalAlignment: Text.AlignVCenter
             color: AppSettings.textColor
             font.pixelSize: AppSettings.mediumFontSize
-            text: qsTr("PLAYER DEVICES")
+            text: qsTr("FOUND DEVICES")
 
             BottomLine {
                 height: 1;
@@ -104,7 +104,7 @@ AppPage {
                 anchors.fill: parent
                     onClicked: {
                         deviceFinder.connectToService(modelData.deviceAddress);
-                        app.showPage("ConnectSpeaker.qml")
+                        app.showPage("Measure.qml")
                     }
                 }
 

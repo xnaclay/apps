@@ -48,20 +48,36 @@
 **
 ****************************************************************************/
 
-#include <QBluetoothSocket>
-
 #include "devicefinder.h"
 #include "deviceinfo.h"
 
 static const QLatin1String BT_SERVER_UUID("3bb45162-cecf-4bcb-be9f-026ec7ab38be");
 
+std::vector<std::string> parse_cmd(const std::string &cmd) {
+  std::string delim = ",";
+  std::vector<std::string> cmdv;
+
+  unsigned long start = 0U;
+  unsigned long end = cmd.find(delim);
+
+  while (end != std::string::npos) {
+    cmdv.emplace_back(cmd.substr(start, end - start));
+    start = end + delim.length();
+    end = cmd.find(delim, start);
+  }
+
+  cmdv.emplace_back(cmd.substr(start, end));
+
+  return cmdv;
+}
+
 DeviceFinder::DeviceFinder(QSettings *settings, QObject *parent):
     BluetoothBaseClass(parent),
     m_settings(settings),
     m_localDevice(parent),
+    socket(QBluetoothServiceInfo::RfcommProtocol),
     m_deviceDiscoveryAgent(this),
-    m_serviceDiscoveryAgent(this),
-    socket(QBluetoothServiceInfo::RfcommProtocol)
+  m_serviceDiscoveryAgent(this)
 {
     connect(&m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered, this, &DeviceFinder::addDevice);
     connect(&m_deviceDiscoveryAgent, static_cast<void (QBluetoothDeviceDiscoveryAgent::*)(QBluetoothDeviceDiscoveryAgent::Error)>(&QBluetoothDeviceDiscoveryAgent::error),
@@ -78,6 +94,9 @@ DeviceFinder::~DeviceFinder()
 {
     qDeleteAll(m_devices);
     m_devices.clear();
+
+    qDeleteAll(m_speakerDevices);
+    m_speakerDevices.clear();
 }
 
 void DeviceFinder::startSearch()
@@ -150,11 +169,13 @@ void DeviceFinder::connectToService(const QString &address)
     }
 
     if (currentDevice) {
-        //TODO IMPLEMENT
-        qInfo() << "connect device"
+        qInfo() << "connect player device"
                 << currentDevice->getAddress();
+        m_settings->setValue("player.address", currentDevice->getAddress());
+        m_settings->setValue("player.name", currentDevice->getName());
         //PROOF OF CONCEPT
-        socket.connectToService(currentDevice->getServiceInfo());
+        socket.connectToService(QBluetoothAddress(currentDevice->getAddress()),
+                                QBluetoothUuid(BT_SERVER_UUID));
 
         connect(&socket, &QBluetoothSocket::readyRead, [this]() {
             qInfo() << "ready to read from server";
@@ -164,6 +185,13 @@ void DeviceFinder::connectToService(const QString &address)
                 QString line = QString::fromUtf8(lineData.constData(), lineData.length());
                 qInfo() << "read line"
                         << line;
+                auto cmdv = parse_cmd(line.toStdString());
+
+                if (cmdv[0] == "BT_DEVICE" && cmdv.size() == 3) {
+                    m_speakerDevices.append(new DeviceInfo(QString::fromStdString(cmdv[1]),
+                                                           QString::fromStdString(cmdv[2])));
+                    emit speakerDevicesChanged();
+                }
             }
         });
         connect(&socket, &QBluetoothSocket::connected, [this]() {
@@ -189,4 +217,9 @@ bool DeviceFinder::scanning() const
 QVariant DeviceFinder::devices()
 {
     return QVariant::fromValue(m_devices);
+}
+
+QVariant DeviceFinder::speakerDevices()
+{
+    return QVariant::fromValue(m_speakerDevices);
 }

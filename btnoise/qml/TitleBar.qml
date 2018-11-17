@@ -58,27 +58,55 @@ Rectangle    {
     height: AppSettings.fieldHeight
     color: AppSettings.viewColor
 
-    property var __titles: ["CONNECT", "MEASURE", "STATS"]
     property int currentIndex: 0
 
     signal titleClicked(int index)
 
-    Repeater {
-        model: 3
-        Text {
-            width: titleBar.width / 3
-            height: titleBar.height
-            x: index * width
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            text: __titles[index]
-            font.pixelSize: AppSettings.tinyFontSize
-            color: titleBar.currentIndex === index ? AppSettings.textColor : AppSettings.disabledTextColor
+    Text {
+        width: titleBar.width / 3
+        height: titleBar.height
+        x: 0 * width
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        text: "PLAYER"
+        font.pixelSize: AppSettings.tinyFontSize
+        color: titleBar.currentIndex === 0 ? AppSettings.textColor : AppSettings.disabledTextColor
 
-            MouseArea {
-                anchors.fill: parent
-                onClicked: titleClicked(index)
-            }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: titleClicked(0)
+        }
+    }
+
+    Text {
+        width: titleBar.width / 3
+        height: titleBar.height
+        x: 1 * width
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        text: "SPEAKER"
+        font.pixelSize: AppSettings.tinyFontSize
+        color: titleBar.currentIndex === 1 ? AppSettings.textColor : AppSettings.disabledTextColor
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: titleClicked(1)
+        }
+    }
+
+    Text {
+        width: titleBar.width / 3
+        height: titleBar.height
+        x: 2 * width
+        horizontalAlignment: Text.AlignHCenter
+        verticalAlignment: Text.AlignVCenter
+        text: "NOISE"
+        font.pixelSize: AppSettings.tinyFontSize
+        color: titleBar.currentIndex === 2 ? AppSettings.textColor : AppSettings.disabledTextColor
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: titleClicked(2)
         }
     }
 

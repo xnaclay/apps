@@ -46,6 +46,7 @@ DISTFILES += \
     android/res/values/libs.xml \
     android/build.gradle \
     android/gradle/wrapper/gradle-wrapper.properties \
-    android/gradlew.bat
+    android/gradlew.bat \
+    qml/ConnectSpeaker.qml
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/android

@@ -75,7 +75,7 @@ AppPage {
             verticalAlignment: Text.AlignVCenter
             color: AppSettings.textColor
             font.pixelSize: AppSettings.mediumFontSize
-            text: qsTr("PLAYER DEVICES")
+            text: qsTr("SPEAKER DEVICES")
 
             BottomLine {
                 height: 1;
@@ -91,7 +91,7 @@ AppPage {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             anchors.top: title.bottom
-            model: deviceFinder.devices
+            model: deviceFinder.speakerDevices
             clip: true
 
             delegate: Rectangle {
@@ -103,8 +103,8 @@ AppPage {
                 MouseArea {
                 anchors.fill: parent
                     onClicked: {
-                        deviceFinder.connectToService(modelData.deviceAddress);
-                        app.showPage("ConnectSpeaker.qml")
+//                        deviceFinder.connectToService(modelData.deviceAddress);
+//                        app.showPage("Noise.qml")
                     }
                 }
 
