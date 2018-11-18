@@ -17,7 +17,6 @@ int main(int argc, char *argv[])
     DeviceFinder deviceFinder(&settings);
 
     QQmlApplicationEngine engine;
-//    engine.rootContext()->setContextProperty("connectionHandler", &connectionHandler);
     engine.rootContext()->setContextProperty("deviceFinder", &deviceFinder);
 
     engine.load(QUrl(QStringLiteral("qrc:/qml/main.qml")));

@@ -59,7 +59,7 @@ AppPage {
         id: viewContainer
         anchors.top: parent.top
         anchors.bottom: searchButton.top
-        anchors.topMargin: AppSettings.fieldMargin + messageHeight
+        anchors.topMargin: AppSettings.fieldMargin
         anchors.bottomMargin: AppSettings.fieldMargin
         anchors.horizontalCenter: parent.horizontalCenter
         width: parent.width - AppSettings.fieldMargin*2
@@ -75,7 +75,7 @@ AppPage {
             verticalAlignment: Text.AlignVCenter
             color: AppSettings.textColor
             font.pixelSize: AppSettings.mediumFontSize
-            text: qsTr("PLAYER DEVICES")
+            text: qsTr("Player Devices")
 
             BottomLine {
                 height: 1;
@@ -146,7 +146,7 @@ AppPage {
         Text {
             anchors.centerIn: parent
             font.pixelSize: AppSettings.tinyFontSize
-            text: qsTr("START SEARCH")
+            text: deviceFinder.scanning ? qsTr("Searching...") : qsTr("Start Search")
             color: searchButton.enabled ? AppSettings.textColor : AppSettings.disabledTextColor
         }
     }

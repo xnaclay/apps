@@ -64,6 +64,16 @@ Item {
     {
         opacity = 1.0
         showPage("Connect.qml")
+
+        if (deviceFinder.playerConfigured) {
+            showPage("ConnectSpeaker.qml")
+        }
+
+        if (deviceFinder.speakerConfigured) {
+            showPage("Noise.qml")
+        }
+
+//        showPage("Noise.qml")
     }
 
     function prevPage()
@@ -75,6 +85,9 @@ Item {
 
     function showPage(name)
     {
+        if (name !== "Connect.qml") {
+            deviceFinder.ensureConnected();
+        }
         lastPages.push(name)
         pageLoader.setSource(name)
         __currentIndex = lastPages.length-1;

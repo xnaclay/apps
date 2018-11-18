@@ -3,6 +3,7 @@
         <file>qml/main.qml</file>
         <file>qml/Connect.qml</file>
         <file>qml/ConnectSpeaker.qml</file>
+        <file>qml/Noise.qml</file>
         <file>qml/AppPage.qml</file>
         <file>qml/BottomLine.qml</file>
         <file>qml/AppSettings.qml</file>

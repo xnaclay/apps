@@ -68,7 +68,7 @@ Rectangle    {
         x: 0 * width
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: "PLAYER"
+        text: "Player"
         font.pixelSize: AppSettings.tinyFontSize
         color: titleBar.currentIndex === 0 ? AppSettings.textColor : AppSettings.disabledTextColor
 
@@ -84,7 +84,7 @@ Rectangle    {
         x: 1 * width
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: "SPEAKER"
+        text: "Speaker"
         font.pixelSize: AppSettings.tinyFontSize
         color: titleBar.currentIndex === 1 ? AppSettings.textColor : AppSettings.disabledTextColor
 
@@ -100,7 +100,7 @@ Rectangle    {
         x: 2 * width
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
-        text: "NOISE"
+        text: "Noise"
         font.pixelSize: AppSettings.tinyFontSize
         color: titleBar.currentIndex === 2 ? AppSettings.textColor : AppSettings.disabledTextColor
 

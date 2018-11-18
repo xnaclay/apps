@@ -74,6 +74,12 @@ class DeviceFinder: public BluetoothBaseClass
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
     Q_PROPERTY(QVariant devices READ devices NOTIFY devicesChanged)
     Q_PROPERTY(QVariant speakerDevices READ speakerDevices NOTIFY speakerDevicesChanged)
+    Q_PROPERTY(QVariant volume READ volume NOTIFY volumeChanged)
+    Q_PROPERTY(QVariant playing READ playing NOTIFY playingChanged)
+    Q_PROPERTY(QVariant playerConfigured READ playerConfigured NOTIFY playerConfiguredChanged)
+    Q_PROPERTY(QVariant playerConnected READ playerConnected NOTIFY playerConnectedChanged)
+    Q_PROPERTY(QVariant speakerConfigured READ speakerConfigured NOTIFY speakerConfiguredChanged)
+    Q_PROPERTY(QVariant speakerConnected READ playing NOTIFY speakerConnectedChanged)
 
 public:
     DeviceFinder(QSettings *settings, QObject *parent = nullptr);
@@ -81,12 +87,25 @@ public:
 
     bool scanning() const;
     QVariant devices();
+    QVariant volume();
+    QVariant playing();
+    QVariant playerConfigured();
+    QVariant speakerConfigured();
+    QVariant playerConnected();
+    QVariant speakerConnected();
     QVariant speakerDevices();
 
 public slots:
     void startSearch();
     void connectToService(const QString &address);
-
+    void startSpeakerSearch();
+    void connectToSpeaker(const QString &address);
+    void disconnectAllSpeakers();
+    void play();
+    void stop();
+    void setVolume(unsigned int vol);
+    void sendVolCmd();
+    void ensureConnected();
 private slots:
     void addDevice(const QBluetoothDeviceInfo&);
     void serviceDiscovered(const QBluetoothServiceInfo&);
@@ -97,6 +116,12 @@ signals:
     void scanningChanged();
     void devicesChanged();
     void speakerDevicesChanged();
+    void volumeChanged();
+    void playingChanged();
+    void playerConfiguredChanged();
+    void playerConnectedChanged();
+    void speakerConfiguredChanged();
+    void speakerConnectedChanged();
 
 private:
     QSettings *m_settings;
@@ -108,7 +133,18 @@ private:
     QBluetoothServiceDiscoveryAgent m_serviceDiscoveryAgent;
     QList<QObject*> m_devices;
     QList<QObject*> m_speakerDevices;
+    QTimer m_volControlTimer;
+    QTimer m_connWatchdogTimer;
 
+    unsigned int m_volume = 0;
+    bool m_playing = false;
+    bool m_playerConnected = false;
+    bool m_speakerConnected = false;
+
+    void sendCmd(const std::vector<std::string> &cmdv);
+    void readServer();
+    std::vector<std::string> parseCmd(const std::string &cmd);
+    void handlePlayerConnection();
 };
 
 #endif // DEVICEFINDER_H

@@ -49,23 +49,22 @@
 ****************************************************************************/
 
 import QtQuick 2.5
+import QtQuick.Layouts 1.11
+import QtQuick.Controls 2.4
 
 AppPage {
 
     errorMessage: deviceFinder.error
     infoMessage: deviceFinder.info
 
-    Rectangle {
-        id: viewContainer
-        anchors.top: parent.top
-        anchors.bottom: searchButton.top
-        anchors.topMargin: AppSettings.fieldMargin
-        anchors.bottomMargin: AppSettings.fieldMargin
+    ColumnLayout {
+
+        Rectangle {
+            height: AppSettings.fieldMargin
+        }
+
         anchors.horizontalCenter: parent.horizontalCenter
         width: parent.width - AppSettings.fieldMargin*2
-        color: AppSettings.viewColor
-        radius: AppSettings.buttonRadius
-
 
         Text {
             id: title
@@ -75,96 +74,75 @@ AppPage {
             verticalAlignment: Text.AlignVCenter
             color: AppSettings.textColor
             font.pixelSize: AppSettings.mediumFontSize
-            text: qsTr("Speaker Devices")
-
-            BottomLine {
-                height: 1;
-                width: parent.width
-                color: "#898989"
-            }
+            text: qsTr("Volume")
         }
 
-
-        ListView {
-            id: devices
+        Slider {
             anchors.left: parent.left
             anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.top: title.bottom
-            model: deviceFinder.speakerDevices
-            clip: true
+            height: AppSettings.fieldHeight
+            width: parent.width
 
-            delegate: Rectangle {
-                id: box
-                height:AppSettings.fieldHeight * 1.2
-                width: parent.width
-                color: index % 2 === 0 ? AppSettings.delegate1Color : AppSettings.delegate2Color
+            from: 0
+            to: 100
+            stepSize: 1.0
 
-                MouseArea {
-                anchors.fill: parent
-                    onClicked: {
-                        deviceFinder.connectToSpeaker(modelData.deviceAddress);
-                        app.showPage("Noise.qml")
-                    }
-                }
+            value: deviceFinder.volume
+
+            onMoved: deviceFinder.setVolume(value)
+        }
+
+        Rectangle {
+            height: AppSettings.fieldMargin
+        }
+
+        Rectangle {
+            width: parent.width
+            height: AppSettings.fieldHeight
+            color: "transparent"
+
+            AppButton {
+                anchors.left: parent.left;
+                width: parent.width/2 - AppSettings.fieldMargin / 4
+                height: AppSettings.fieldHeight
+                enabled: deviceFinder.playing
+                onClicked: deviceFinder.stop()
 
                 Text {
-                    id: device
-                    font.pixelSize: AppSettings.smallFontSize
-                    text: modelData.deviceName
-                    anchors.top: parent.top
-                    anchors.topMargin: parent.height * 0.1
-                    anchors.leftMargin: parent.height * 0.1
-                    anchors.left: parent.left
+                    anchors.centerIn: parent
+                    font.pixelSize: AppSettings.tinyFontSize
+                    text: qsTr("Stop")
                     color: AppSettings.textColor
                 }
+            }
+
+            AppButton {
+                anchors.right: parent.right;
+                width: parent.width/2 - AppSettings.fieldMargin / 4
+                height: AppSettings.fieldHeight
+                enabled: !deviceFinder.playing
+                onClicked: deviceFinder.play()
 
                 Text {
-                    id: deviceAddress
-                    font.pixelSize: AppSettings.smallFontSize
-                    text: modelData.deviceAddress
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: parent.height * 0.1
-                    anchors.rightMargin: parent.height * 0.1
-                    anchors.right: parent.right
-                    color: Qt.darker(AppSettings.textColor)
+                    anchors.centerIn: parent
+                    font.pixelSize: AppSettings.tinyFontSize
+                    text: qsTr("Play")
+                    color: AppSettings.textColor
                 }
             }
         }
-    }
 
-    AppButton {
-        anchors.left: parent.left;
-        anchors.leftMargin: AppSettings.fieldMargin
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: AppSettings.fieldMargin
-        width: viewContainer.width/2 - AppSettings.fieldMargin / 4
-        height: AppSettings.fieldHeight
-        onClicked: deviceFinder.disconnectAllSpeakers()
-
-        Text {
-            anchors.centerIn: parent
-            font.pixelSize: AppSettings.tinyFontSize
-            text: qsTr("Disconnect Speaker")
-            color: AppSettings.textColor
+        Rectangle {
+            height: AppSettings.fieldMargin
         }
-    }
-
-    AppButton {
-        id: searchButton
-        anchors.right: parent.right;
-        anchors.rightMargin: AppSettings.fieldMargin
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: AppSettings.fieldMargin
-        width: viewContainer.width/2 - AppSettings.fieldMargin / 4
-        height: AppSettings.fieldHeight
-        onClicked: deviceFinder.startSpeakerSearch()
 
         Text {
-            anchors.centerIn: parent
-            font.pixelSize: AppSettings.tinyFontSize
-            text: qsTr("Start Search")
+            width: parent.width
+            visible: !deviceFinder.playerConnected
+            height: AppSettings.fieldHeight
             color: AppSettings.textColor
+            font.pixelSize: AppSettings.mediumFontSize
+            text: qsTr("Player is disconnected")
         }
     }
 }

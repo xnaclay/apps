@@ -48,28 +48,12 @@
 **
 ****************************************************************************/
 
+#include <sstream>
+
 #include "devicefinder.h"
 #include "deviceinfo.h"
 
 static const QLatin1String BT_SERVER_UUID("3bb45162-cecf-4bcb-be9f-026ec7ab38be");
-
-std::vector<std::string> parse_cmd(const std::string &cmd) {
-  std::string delim = ",";
-  std::vector<std::string> cmdv;
-
-  unsigned long start = 0U;
-  unsigned long end = cmd.find(delim);
-
-  while (end != std::string::npos) {
-    cmdv.emplace_back(cmd.substr(start, end - start));
-    start = end + delim.length();
-    end = cmd.find(delim, start);
-  }
-
-  cmdv.emplace_back(cmd.substr(start, end));
-
-  return cmdv;
-}
 
 DeviceFinder::DeviceFinder(QSettings *settings, QObject *parent):
     BluetoothBaseClass(parent),
@@ -88,6 +72,33 @@ DeviceFinder::DeviceFinder(QSettings *settings, QObject *parent):
 
     connect(&m_serviceDiscoveryAgent, &QBluetoothServiceDiscoveryAgent::serviceDiscovered, this, &DeviceFinder::serviceDiscovered);
 
+    connect(&socket, &QBluetoothSocket::readyRead, this, &DeviceFinder::readServer);
+    connect(&socket, &QBluetoothSocket::connected, this, &DeviceFinder::handlePlayerConnection);
+    connect(&socket, &QBluetoothSocket::disconnected, [this]() {
+        qInfo() << "disconnected from service";
+        m_playerConnected = false;
+        emit playerConnectedChanged();
+    });
+
+    connect(&m_volControlTimer, &QTimer::timeout, this, &DeviceFinder::sendVolCmd);
+    connect(&m_connWatchdogTimer, &QTimer::timeout, this, &DeviceFinder::ensureConnected);
+
+    m_connWatchdogTimer.setInterval(5000);
+    m_connWatchdogTimer.start();
+
+    if (m_settings->contains("player.address")) {
+        qInfo() << "adding saved player to list"
+                << m_settings->value("player.address").toString()
+                << m_settings->value("player.name").toString();
+        m_devices.append(new DeviceInfo(m_settings->value("player.address").toString(), m_settings->value("player.name").toString()));
+    }
+
+    if (m_settings->contains("speaker.address")) {
+        qInfo() << "adding saved speaker to list"
+                << m_settings->value("speaker.address").toString()
+                << m_settings->value("speaker.name").toString();
+        m_speakerDevices.append(new DeviceInfo(m_settings->value("speaker.address").toString(), m_settings->value("speaker.name").toString()));
+    }
 }
 
 DeviceFinder::~DeviceFinder()
@@ -102,25 +113,21 @@ DeviceFinder::~DeviceFinder()
 void DeviceFinder::startSearch()
 {
     clearMessages();
-    qDeleteAll(m_devices);
-    m_devices.clear();
 
     emit devicesChanged();
 
-//    m_deviceDiscoveryAgent.start();
     qInfo() << "starting service scan";
     m_serviceDiscoveryAgent.setUuidFilter(QBluetoothUuid(BT_SERVER_UUID));
     m_serviceDiscoveryAgent.start(QBluetoothServiceDiscoveryAgent::FullDiscovery);
 
     emit scanningChanged();
-    setInfo(tr("Scanning for devices..."));
 }
 
 void DeviceFinder::addDevice(const QBluetoothDeviceInfo &device)
 {
     qInfo() << "found device" << device.address().toString();
     m_devices.append(new DeviceInfo(device));
-    setInfo(tr("Device found. Scanning more..."));
+//    setInfo(tr("Device found. Scanning more..."));
     emit devicesChanged();
 }
 
@@ -129,6 +136,13 @@ void DeviceFinder::serviceDiscovered(const QBluetoothServiceInfo &service)
     qInfo() << "service discovered"
             << service.device().name()
             << service.device().address().toString();
+
+    for (const auto &device : m_devices) {
+        if (QString::compare(static_cast<DeviceInfo *>(device)->getAddress(), service.device().address().toString()) == 0) {
+            return;
+        }
+    }
+
     m_devices.append(new DeviceInfo(service));
     emit devicesChanged();
 }
@@ -146,14 +160,129 @@ void DeviceFinder::scanError(QBluetoothDeviceDiscoveryAgent::Error error)
 
 void DeviceFinder::scanFinished()
 {
-    if (m_devices.size() == 0) {
-        setError(tr("No devices found."));
-    } else {
-        setInfo(tr("Scanning done."));
-    }
+//    if (m_devices.size() == 0) {
+//        setError(tr("No devices found."));
+//    } else {
+//        setInfo(tr("Scanning done."));
+//    }
 
     emit scanningChanged();
     emit devicesChanged();
+}
+
+std::vector<std::string> DeviceFinder::parseCmd(const std::string &cmd)
+{
+  std::string delim = ",";
+  std::vector<std::string> cmdv;
+
+  unsigned long start = 0U;
+  unsigned long end = cmd.find(delim);
+
+  while (end != std::string::npos) {
+    cmdv.emplace_back(cmd.substr(start, end - start));
+    start = end + delim.length();
+    end = cmd.find(delim, start);
+  }
+
+  cmdv.emplace_back(cmd.substr(start, end));
+
+  return cmdv;
+}
+
+void DeviceFinder::sendCmd(const std::vector<std::string> &cmdv)
+{
+    std::stringstream cmd_ss("");
+
+    for (unsigned int i = 0; i < cmdv.size(); i++) {
+        socket.write(cmdv[i].c_str());
+
+        if (i < cmdv.size() - 1) {
+            socket.write(",");
+        }
+    }
+
+    socket.write("\n");
+}
+
+void DeviceFinder::readServer() {
+    qInfo() << "ready to read from server";
+
+    while (socket.canReadLine()) {
+        QByteArray lineData = socket.readLine();
+        QString line = QString::fromUtf8(lineData.constData(), lineData.length());
+        auto cmdv = parseCmd(line.trimmed().toStdString());
+
+        for (const auto &v : cmdv) {
+            qInfo() << "CMD" << v.c_str();
+        }
+
+
+        std::map<std::string, std::function<void()>> cmd_dispatch;
+
+        cmd_dispatch.emplace("BT_DEVICE", [this, &cmdv]() {
+            for (const auto &device : m_speakerDevices) {
+                if (static_cast<DeviceInfo *>(device)->getAddress().toStdString() == cmdv[1]) {
+                    qInfo() << "speaker device already known"
+                            << static_cast<DeviceInfo *>(device)->getAddress();
+                    return;
+                }
+            }
+            qInfo() << "discovered speaker"
+                    << QString::fromStdString(cmdv[1])
+                    << QString::fromStdString(cmdv[2]);
+
+            m_speakerDevices.append(new DeviceInfo(QString::fromStdString(cmdv[1]),
+                                                   QString::fromStdString(cmdv[2])));
+            emit speakerDevicesChanged();
+        });
+
+        cmd_dispatch.emplace("CONNECTED_SPEAKER", [this, &cmdv]() {
+            qInfo() << "player reported speaker connected"
+                    << cmdv[1].c_str();
+            m_speakerConnected = true;
+            emit speakerConnectedChanged();
+        });
+
+        cmd_dispatch.emplace("DISCONNECTED_SPEAKER", [this]() {
+            qInfo() << "player reported speaker disconnected";
+            m_speakerConnected = false;
+            emit speakerConnectedChanged();
+        });
+
+        cmd_dispatch.emplace("VOL", [this, &cmdv]() {
+            qInfo() << "player reported volume"
+                    << cmdv[1].c_str();
+            m_volume = static_cast<unsigned int>(std::atoi(cmdv[1].c_str()));
+            emit volumeChanged();
+        });
+
+        cmd_dispatch.emplace("PLAYING", [this]() {
+            qInfo() << "player reported playing";
+            m_playing = true;
+            emit playingChanged();
+        });
+
+        cmd_dispatch.emplace("STOPPED", [this]() {
+            qInfo() << "player reported stopped";
+            m_playing = false;
+            emit playingChanged();
+        });
+
+        auto cmd_it = cmd_dispatch.find(cmdv[0]);
+
+        if (cmd_it != cmd_dispatch.end()) {
+          cmd_dispatch[cmd_it->first]();
+        } else {
+          qInfo() << "unrecognized command";
+        }
+    }
+}
+
+void DeviceFinder::handlePlayerConnection()
+{
+    qInfo() << "connected to service";
+    m_playerConnected = true;
+    emit playerConnectedChanged();
 }
 
 void DeviceFinder::connectToService(const QString &address)
@@ -162,8 +291,8 @@ void DeviceFinder::connectToService(const QString &address)
 
     DeviceInfo *currentDevice = nullptr;
     for (int i = 0; i < m_devices.size(); i++) {
-        if (((DeviceInfo*)m_devices.at(i))->getAddress() == address ) {
-            currentDevice = (DeviceInfo*)m_devices.at(i);
+        if (static_cast<DeviceInfo *>(m_devices.at(i))->getAddress() == address ) {
+            currentDevice = static_cast<DeviceInfo *>(m_devices.at(i));
             break;
         }
     }
@@ -173,40 +302,86 @@ void DeviceFinder::connectToService(const QString &address)
                 << currentDevice->getAddress();
         m_settings->setValue("player.address", currentDevice->getAddress());
         m_settings->setValue("player.name", currentDevice->getName());
-        //PROOF OF CONCEPT
-        socket.connectToService(QBluetoothAddress(currentDevice->getAddress()),
-                                QBluetoothUuid(BT_SERVER_UUID));
+        if (socket.state() != QBluetoothSocket::UnconnectedState) {
+            m_playerConnected = false;
+            emit playerConnectedChanged();
+            socket.close();
+        }
+        ensureConnected();
 
-        connect(&socket, &QBluetoothSocket::readyRead, [this]() {
-            qInfo() << "ready to read from server";
-
-            while (socket.canReadLine()) {
-                QByteArray lineData = socket.readLine();
-                QString line = QString::fromUtf8(lineData.constData(), lineData.length());
-                qInfo() << "read line"
-                        << line;
-                auto cmdv = parse_cmd(line.toStdString());
-
-                if (cmdv[0] == "BT_DEVICE" && cmdv.size() == 3) {
-                    m_speakerDevices.append(new DeviceInfo(QString::fromStdString(cmdv[1]),
-                                                           QString::fromStdString(cmdv[2])));
-                    emit speakerDevicesChanged();
-                }
-            }
-        });
-        connect(&socket, &QBluetoothSocket::connected, [this]() {
-            qInfo() << "connected to service";
-
-            qInfo() << "sending SCAN command";
-
-            socket.write("SCAN\n");
-        });
-        connect(&socket, &QBluetoothSocket::disconnected, []() {
-            qInfo() << "disconnected from service";
-        });
     }
 
     clearMessages();
+}
+
+void DeviceFinder::ensureConnected() {
+    if (socket.state() == QBluetoothSocket::UnconnectedState) {
+        socket.connectToService(QBluetoothAddress(m_settings->value("player.address").toString()), QBluetoothUuid(BT_SERVER_UUID));
+    }
+}
+
+void DeviceFinder::startSpeakerSearch()
+{
+    qInfo() << "sending SCAN command";
+
+    sendCmd({"SCAN"});
+}
+
+void DeviceFinder::connectToSpeaker(const QString &address)
+{
+
+    DeviceInfo *currentDevice = nullptr;
+    for (int i = 0; i < m_speakerDevices.size(); i++) {
+        if (static_cast<DeviceInfo *>(m_speakerDevices.at(i))->getAddress() == address ) {
+            currentDevice = static_cast<DeviceInfo *>(m_speakerDevices.at(i));
+            break;
+        }
+    }
+
+    m_settings->setValue("speaker.address", currentDevice->getAddress());
+    m_settings->setValue("speaker.name", currentDevice->getName());
+
+    qInfo() << "sending request to connect to speaker"
+            << address;
+    sendCmd({"CONNECT", address.toStdString()});
+}
+
+void DeviceFinder::disconnectAllSpeakers()
+{
+    qInfo() << "sending request to remove all speakers";
+    sendCmd({"UNPAIR_SPEAKER"});
+}
+
+void DeviceFinder::play()
+{
+    qInfo() << "sending request to play";
+    sendCmd({"PLAY"});
+    m_playing = true;
+    emit playingChanged();
+}
+
+void DeviceFinder::stop()
+{
+    qInfo() << "sending request to stop";
+    sendCmd({"STOP"});
+    m_playing = false;
+    emit playingChanged();
+}
+
+void DeviceFinder::setVolume(unsigned int vol)
+{
+    qInfo() << "sending request to set volume";
+    m_volControlTimer.stop();
+    m_volControlTimer.setInterval(500);
+    m_volControlTimer.setSingleShot(true);
+    m_volControlTimer.start();
+    m_volume = vol;
+    emit volumeChanged();
+}
+
+void DeviceFinder::sendVolCmd() {
+    qInfo() << "sending request to set volume";
+    sendCmd({"SET_VOL", QString::number(m_volume).toStdString()});
 }
 
 bool DeviceFinder::scanning() const
@@ -217,6 +392,44 @@ bool DeviceFinder::scanning() const
 QVariant DeviceFinder::devices()
 {
     return QVariant::fromValue(m_devices);
+}
+
+QVariant DeviceFinder::volume()
+{
+    return QVariant::fromValue(m_volume);
+}
+
+QVariant DeviceFinder::playing()
+{
+    return QVariant::fromValue(m_playing);
+}
+
+QVariant DeviceFinder::playerConfigured()
+{
+    if (m_settings->contains("player.address")) {
+        return QVariant::fromValue(true);
+    } else {
+        return QVariant::fromValue(false);
+    }
+}
+
+QVariant DeviceFinder::speakerConfigured()
+{
+    if (m_settings->contains("speaker.address")) {
+        return QVariant::fromValue(true);
+    } else {
+        return QVariant::fromValue(false);
+    }
+}
+
+QVariant DeviceFinder::playerConnected()
+{
+    return QVariant::fromValue(m_playerConnected);
+}
+
+QVariant DeviceFinder::speakerConnected()
+{
+    return QVariant::fromValue(m_speakerConnected);
 }
 
 QVariant DeviceFinder::speakerDevices()
