@@ -79,7 +79,7 @@ class DeviceFinder: public BluetoothBaseClass
     Q_PROPERTY(QVariant playerConfigured READ playerConfigured NOTIFY playerConfiguredChanged)
     Q_PROPERTY(QVariant playerConnected READ playerConnected NOTIFY playerConnectedChanged)
     Q_PROPERTY(QVariant speakerConfigured READ speakerConfigured NOTIFY speakerConfiguredChanged)
-    Q_PROPERTY(QVariant speakerConnected READ playing NOTIFY speakerConnectedChanged)
+    Q_PROPERTY(QVariant speakerConnected READ speakerConnected NOTIFY speakerConnectedChanged)
 
 public:
     DeviceFinder(QSettings *settings, QObject *parent = nullptr);

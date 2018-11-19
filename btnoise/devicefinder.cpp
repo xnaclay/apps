@@ -88,20 +88,6 @@ DeviceFinder::DeviceFinder(QSettings *settings, QObject *parent):
 
     m_connWatchdogTimer.setInterval(5000);
     m_connWatchdogTimer.start();
-
-    if (m_settings->contains("player.address")) {
-        qInfo() << "adding saved player to list"
-                << m_settings->value("player.address").toString()
-                << m_settings->value("player.name").toString();
-        m_devices.append(new DeviceInfo(m_settings->value("player.address").toString(), m_settings->value("player.name").toString()));
-    }
-
-    if (m_settings->contains("speaker.address")) {
-        qInfo() << "adding saved speaker to list"
-                << m_settings->value("speaker.address").toString()
-                << m_settings->value("speaker.name").toString();
-        m_speakerDevices.append(new DeviceInfo(m_settings->value("speaker.address").toString(), m_settings->value("speaker.name").toString()));
-    }
 }
 
 DeviceFinder::~DeviceFinder()
@@ -116,6 +102,15 @@ DeviceFinder::~DeviceFinder()
 void DeviceFinder::startSearch()
 {
     clearMessages();
+    qDeleteAll(m_devices);
+    m_devices.clear();
+
+    if (m_settings->contains("player.address")) {
+        qInfo() << "adding saved player to list"
+                << m_settings->value("player.address").toString()
+                << m_settings->value("player.name").toString();
+        m_devices.append(new DeviceInfo(m_settings->value("player.address").toString(), m_settings->value("player.name").toString()));
+    }
 
     emit devicesChanged();
 
@@ -325,6 +320,18 @@ void DeviceFinder::ensureConnected() {
 
 void DeviceFinder::startSpeakerSearch()
 {
+    qDeleteAll(m_speakerDevices);
+    m_speakerDevices.clear();
+
+    if (m_settings->contains("speaker.address")) {
+        qInfo() << "adding saved speaker to list"
+                << m_settings->value("speaker.address").toString()
+                << m_settings->value("speaker.name").toString();
+        m_speakerDevices.append(new DeviceInfo(m_settings->value("speaker.address").toString(), m_settings->value("speaker.name").toString()));
+    }
+
+    emit speakerDevicesChanged();
+
     qInfo() << "sending SCAN command";
 
     sendCmd({"SCAN"});
