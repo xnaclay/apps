@@ -133,6 +133,7 @@ AppPage {
         }
 
         Rectangle {
+            color: "transparent"
             height: AppSettings.fieldMargin
         }
 
@@ -143,6 +144,16 @@ AppPage {
             color: AppSettings.textColor
             font.pixelSize: AppSettings.mediumFontSize
             text: qsTr("Player is disconnected")
+        }
+
+        Text {
+            width: parent.width
+            anchors.topMargin: AppSettings.fieldMargin
+            visible: !deviceFinder.speakerConnected
+            height: AppSettings.fieldHeight
+            color: AppSettings.textColor
+            font.pixelSize: AppSettings.mediumFontSize
+            text: qsTr("Speaker is disconnected")
         }
     }
 }
