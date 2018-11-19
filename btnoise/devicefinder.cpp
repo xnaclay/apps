@@ -70,6 +70,9 @@ DeviceFinder::DeviceFinder(QSettings *settings, QObject *parent):
     connect(&m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::finished, this, &DeviceFinder::scanFinished);
     connect(&m_deviceDiscoveryAgent, &QBluetoothDeviceDiscoveryAgent::canceled, this, &DeviceFinder::scanFinished);
 
+    connect(&m_serviceDiscoveryAgent, &QBluetoothServiceDiscoveryAgent::finished, this, &DeviceFinder::scanFinished);
+    connect(&m_serviceDiscoveryAgent, &QBluetoothServiceDiscoveryAgent::canceled, this, &DeviceFinder::scanFinished);
+
     connect(&m_serviceDiscoveryAgent, &QBluetoothServiceDiscoveryAgent::serviceDiscovered, this, &DeviceFinder::serviceDiscovered);
 
     connect(&socket, &QBluetoothSocket::readyRead, this, &DeviceFinder::readServer);
@@ -315,7 +318,7 @@ void DeviceFinder::connectToService(const QString &address)
 }
 
 void DeviceFinder::ensureConnected() {
-    if (socket.state() == QBluetoothSocket::UnconnectedState) {
+    if (!m_serviceDiscoveryAgent.isActive() && m_settings->contains("player.address") && socket.state() == QBluetoothSocket::UnconnectedState) {
         socket.connectToService(QBluetoothAddress(m_settings->value("player.address").toString()), QBluetoothUuid(BT_SERVER_UUID));
     }
 }
@@ -386,7 +389,7 @@ void DeviceFinder::sendVolCmd() {
 
 bool DeviceFinder::scanning() const
 {
-    return m_deviceDiscoveryAgent.isActive();
+    return m_serviceDiscoveryAgent.isActive();
 }
 
 QVariant DeviceFinder::devices()
